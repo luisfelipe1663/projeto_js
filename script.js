@@ -107,3 +107,11 @@ highlightBtn.addEventListener("click", () => {
     //Atualiza o atributo de acessebilidade
     highlightBtn.setAttribute("aria-pressed", String(isHighlighted));
 });
+const  backToTopBtn = qs("#backToTopBtn");
+
+backToTopBtn.addEventListener("click", () =>{
+    window.scrollTo({
+        top:0,
+        behavior: "smooth"
+    });
+});
