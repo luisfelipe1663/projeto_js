@@ -236,7 +236,6 @@ modalOverlay.addEventListener("click", (e) => {
     if (e.target === modalOverlay) closeModal();
 });
 
-
 //--------TAB (ABAS)-------------
 
 //Selecionar o container das taps usando o atributo data-tabs 
@@ -248,7 +247,7 @@ const tabsRoot = qs("[data-tabs]");
 if (tabsRoot) {
 
     //Seleciona todos os botões de tab (pelo role="tab" para acessibilidade)
-    const tabs = qsa("[role='tabs']", tabsRoot);
+    const tabs = qsa("[role='tab']", tabsRoot);
 
     //Selecionar todos os paineis de conteudo (role="tabpanel")
     const panels = qsa("[role='tabpanel']", tabsRoot)
@@ -286,18 +285,168 @@ if (tabsRoot) {
         });
     });
 
-    tabsRoot.addEventListener("keydown", (e) =>{
-        if(!["ArrowLeft","ArrowRight"].includes(e.key)) return
+    tabsRoot.addEventListener("keydown", (e) => {
+        if (!["ArrowLeft", "ArrowRight"].includes(e.key)) return
         //encontrando o index da aba ativa
-        const activeIndex = tabs.findIndex((t)=> t.getAttribute("aria-selected")=== "true");
+        const activeIndex = tabs.findIndex((t) => t.getAttribute("aria-selected") === "true");
 
-        const direction = e.key ==="ArrowRight" ? 1 : -1
+        const direction = e.key === "ArrowRight" ? 1 : -1
+
+        //Calcula é o proximo indice
+        let nextIndex = activeIndex + direction;
+
+        //se passar do inicio, voltará para a última aba
+        if (nextIndex < 0) nextIndex = tabs.length - 1;
+
+        //Se passar do final, volta para a primeira aba
+        if (nextIndex >= tabs.length) nextIndex = 0;
+
+        //Move o foco do teclado para a próxima aba
+        tabs[nextIndex].focus();
+
+        //Ativa a próxima aba (e troca o painel)
+        activeateTab(tabs[nextIndex]);
     });
 };
-''
+
 //--------CARROSSEL-------------
 
+//Seleciona o container do carrossel usando o data-carousel 
+const carouselRoot = qs("[data-carousel]");
+
+//Se existir o carrossel 
+if (carouselRoot) {
+
+    const slides = qsa(".slide", carouselRoot);
+    const prevBtn = qs("[data-prev]", carouselRoot);
+    const nextBtn = qs("[data-Next]", carouselRoot);
+    const dots = qsa("[data-dot]", carouselRoot);
+    const currentE1 = qs("[data-current]", carouselRoot);
+    const totalE1 = qs("[data-total]", carouselRoot);
+
+    let index = 0;
+    totalE1.textContent = String(slides.length);
+
+    //função para redenrizar nosso carrossel.
+    function renderCarousel() {
+        //Mostra apenas o slides do indice, escondendo os outros
+        slides.forEach((slide, i) => {
+            //Será true apenas para o slide ativo 
+            const isActive = i === index;
+
+            //serve para esconder e mostrar os slides
+            slide.hidden = !isActive;
+
+            //Classes CSS para destacar o slide ativo
+            slide.classList.toggle("is-active", isActive)
+        });
+
+        //Atualizar as bolinhas do carrossel 
+        dots.forEach((dot, i) => {
+
+            //ativa apenas a bolinha do slide atual
+            const isActive = i === index;
+
+            //Classe do CSS para mostrar a bolinha ativa
+            dot.classList.toggle("is-active", isActive);
+
+            //Acessibilidade 
+            dot.setAttribute("aria-pressed", String(isActive));
+        });
+
+        //Atualizando o contador de slides 
+        currentE1.textContent = String(index + 1);
+    };
+
+    //Função para exibir o proximo slide
+    function next() {
+        //Soma 1 e utiliza o módulo(%) para voltar ao 0 
+        index = (index + 1) % slides.length;
+        renderCarousel();
+    };
+
+    function prev() {
+        index = (index - 1 + slides.length) % slides.length;
+    };
+
+    nextBtn.addEventListener("click", next);
+    prevBtn.addEventListener("click", prev);
+
+    //Clique nas bolinhas do carrossel 
+    dots.forEach((dot) => {
+
+        dot.addEventListener("click", () => {
+            const target = Number(dot.getAttribute("data-dot"));
+
+            if (!Number.isNaN(target)) {
+                index = target;
+                renderCarousel();
+            };
+        });
+    });
+    //Render inicial: garante que só 1 slide apareça ao carregar  
+    renderCarousel();
+};
+
 //--------REQUISIÇÃO + REDENRIZAÇÃO-------------
+const loadUsersBtn = qs("#loadUsersBtn");
+const clearUsersBtn = qs("#clearUsersBtn");
+const apiStatus = qs("#apiStatus");
+const usersList = qs("#usersList");
+
+function clearUserUI() {
+    usersList.innerHTML = "";
+    apiStatus.textContent = "";
+};
+
+function renderUsers(users) {
+    usersList.innerHTML = "";
+
+    //Para cada usuário, cria um <li> e coloca em lista
+    users.forEach((user) => {
+        const li = document.createElement("li");
+
+        li.innerHTML = `
+        <strong>${user.name}</strong><br>
+        <span class ="muted">${user.email}</span>
+        `;
+
+        usersList.appendChild(li);
+    });
+};
+
+async function loadUsers() {
+    try {
+        //Resposta rápida pro usuário
+        apiStatus.textContent ="Carregando usuário..."
+        loadUsersBtn.disabled = true;
+
+        //Requisição da API 
+        const response = await fetch("https://jsonplaceholder.typicode.com/users");
+
+        if(!response.ok){
+            throw new Error("Erro na requisição:"+ response.status);
+        };
+
+        //Conversão para o JSON(Array de usuários)
+        const users = await response.json();
+
+        //Renderiza na tela 
+        renderUsers(users);
+
+        //Mensaagem final:
+        apiStatus.textContent = `"Carregado com sucesso:"${users.length} "usuários"`;
+    } catch(error){
+        apiStatus.textContent ="Falha ao carregar os usuários. Tente novamente.";
+        console.error(error);
+    } finally {
+        //Reabilitar o botão 
+        loadUsersBtn.disabled = false;
+    };
+};
+
+loadUsersBtn.addEventListener("click", loadUsers);
+clearUsersBtn.addEventListener("click", clearUserUI);
 
 //--------VOLTAR AO TOPO-------------
 
